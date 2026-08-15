@@ -1,0 +1,30 @@
+# Vercel
+.vercel
+
+# Bí mật — TUYỆT ĐỐI không commit chuỗi kết nối database
+.env
+.env.*
+!.env.example
+
+# Phụ thuộc (Vercel tự cài từ package.json khi build)
+node_modules/
+package-lock.json
+
+# Hệ điều hành / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+node_modules/
+
+# ==========================================================================
+# File nguồn nặng — không nên đưa vào git (repo sẽ phình ~17 MB).
+# Giữ bản lưu ở nơi khác (Drive / NAS). Trang web KHÔNG tham chiếu tới chúng:
+# bản đồ 3D đã được port sang js/map3d.js + assets/map/*.webp.
+# Bỏ dấu # ở đầu dòng nếu bạn muốn version chúng.
+# ==========================================================================
+THE OPUSK - Location Map 3D.html
+Section_3D map animation/
+assets/_original/
+assets/_unused/
+js/_unused/

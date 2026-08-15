@@ -1,0 +1,28 @@
+# ==========================================================================
+# Không đưa lên production — chỉ là tài liệu / file nguồn thiết kế.
+# Tổng cộng ~17 MB, không có file nào được trang web tham chiếu tới.
+# ==========================================================================
+
+# File nguồn bản đồ 3D (bản React/JSX gốc đã được port sang js/map3d.js)
+THE OPUSK - Location Map 3D.html
+Section_3D map animation/
+
+# Ảnh gốc chưa nén & ảnh không dùng
+assets/_original/
+assets/_unused/
+js/_unused/
+
+# Script cài database — chỉ chạy thủ công, không cần public
+db/
+
+# Tài liệu nội bộ
+ANIMATION-MAP.md
+assets/README-ANH.md
+README.md
+
+# Hệ điều hành / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+node_modules/
