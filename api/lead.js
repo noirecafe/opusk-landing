@@ -11,10 +11,19 @@
    Nếu CHƯA cấu hình database, endpoint trả 503 kèm thông điệp rõ ràng; giao
    diện sẽ hiện số hotline thay vì báo lỗi vô nghĩa. Trang web vẫn dùng được
    trước khi bạn kịp dựng database.
+
+   Google Sheet: nếu đã cấu hình đủ 3 biến GOOGLE_SERVICE_ACCOUNT_EMAIL,
+   GOOGLE_PRIVATE_KEY, GOOGLE_SHEET_ID thì mỗi lead lưu vào Postgres xong sẽ
+   được ghi thêm một dòng vào Google Sheet ngay lập tức. Nếu thiếu biến hoặc
+   ghi Sheet bị lỗi, request vẫn trả về thành công bình thường — Postgres là
+   nguồn dữ liệu chính, Sheet chỉ là bản sao tiện xem/chia sẻ, không được
+   phép làm hỏng luồng lưu lead.
    ========================================================================== */
 
 import { neon } from '@neondatabase/serverless';
 import crypto from 'node:crypto';
+import { JWT } from 'google-auth-library';
+import { GoogleSpreadsheet } from 'google-spreadsheet';
 
 /* --- Giới hạn độ dài, khớp với maxlength ở phía giao diện --- */
 const LIMIT = { name: 120, email: 160, phone: 40, company: 160, message: 4000 };
@@ -47,6 +56,41 @@ function hashIp(ip) {
   if (!ip) return null;
   const salt = process.env.LEAD_IP_SALT || 'opusk-default-salt';
   return crypto.createHash('sha256').update(salt + '|' + ip).digest('hex').slice(0, 32);
+}
+
+/* ---- Ghi thêm 1 dòng vào Google Sheet — chạy sau khi đã lưu Postgres ----
+   Best-effort: lỗi ở đây chỉ log ra, không throw, không ảnh hưởng response. */
+async function appendToSheet(row) {
+  const email      = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  const sheetId     = process.env.GOOGLE_SHEET_ID;
+
+  if (!email || !privateKey || !sheetId) return; // chưa cấu hình — bỏ qua êm
+
+  try {
+    const auth = new JWT({
+      email,
+      key: privateKey.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const doc = new GoogleSpreadsheet(sheetId, auth);
+    await doc.loadInfo();
+
+    const sheet = doc.sheetsByIndex[0];
+    await sheet.addRow({
+      id:           String(row.id),
+      created_at:   row.created_at,
+      full_name:    row.full_name,
+      email:        row.email,
+      phone:        row.phone,
+      company:      row.company || '',
+      requirements: row.requirements || '',
+      status:       'new',
+    });
+  } catch (err) {
+    console.error('[lead] Ghi Google Sheet thất bại (bỏ qua, không chặn lead):', err);
+  }
 }
 
 export default async function handler(req, res) {
@@ -116,6 +160,16 @@ export default async function handler(req, res) {
     `;
 
     console.log('[lead] Đã lưu #' + saved.id);
+
+    // Ghi thêm sang Google Sheet — không await chặn response, không làm fail lead
+    // nếu Sheet lỗi. Vercel giữ function sống tới khi promise này xong nhờ waitUntil
+    // nếu có, còn không thì vẫn kịp chạy xong trong hầu hết trường hợp vì rất nhanh.
+    if (typeof res.waitUntil === 'function') {
+      res.waitUntil(appendToSheet({ ...saved, full_name: name, email, phone, company, requirements: message }));
+    } else {
+      await appendToSheet({ ...saved, full_name: name, email, phone, company, requirements: message });
+    }
+
     return res.status(201).json({ ok: true, id: saved.id });
 
   } catch (err) {

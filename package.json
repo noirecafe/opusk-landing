@@ -8,6 +8,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.0"
+    "@neondatabase/serverless": "^1.0.0",
+    "google-auth-library": "^9.14.1",
+    "google-spreadsheet": "^4.1.4"
   }
 }
